@@ -16,10 +16,10 @@ name: Freecell-App
 provides:
   Freecell::App:
     file: lib/Freecell/App.pm
-    version: 0.01
+    version: 0.02
   Freecell::Tableau:
     file: lib/Freecell/Tableau.pm
-    version: 0.01
+    version: 0.02
 requires:
   File::ShareDir: 1.00
   File::Slurp: 9999.19
@@ -29,4 +29,4 @@ requires:
   Storable: 2.34
 resources:
   license: http://opensource.org/licenses/artistic-license-2.0.php
-version: 0.01
+version: 0.02

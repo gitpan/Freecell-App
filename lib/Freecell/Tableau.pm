@@ -1,10 +1,27 @@
 package Freecell::Tableau;
 use version;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use warnings;
 use strict;
 use Storable qw(dclone);
 use List::Util qw(min);
+
+my %conf = (
+    winxp_bool => 0,
+    winxp_warn => 0,
+);
+sub _property {
+    my ($class, $attr, $value) = @_;
+    if (defined $value) {
+        my $oldv = $conf{$attr};
+        $conf{$attr} = $value;
+        return $oldv;
+    }
+    return $conf{$attr};
+}
+sub winxp_bool () { return shift->_property('winxp_bool', @_) }
+sub winxp_warn () { return shift->_property('winxp_warn', @_) }
+
 sub rank            { $_[0] & 15 }
 sub suit            { $_[0] >> 4 & 3 }
 sub opposite_colors { ( $_[0] & 16 ) != ( $_[1] & 16 ) }
@@ -148,7 +165,7 @@ sub _home {
 
             ( map $_->[0], @$self )
 
-# index of home cards of opposite color; << 4 = 0100.... 0101.... 0110.... 0111....
+            # index of home cards of opposite color; << 4 = 0100.... 0101.... 0110.... 0111....
 
               [ grep opposite_colors( $src, $_ << 4 ), 4 .. 7 ]
 
@@ -188,7 +205,7 @@ sub autoplay {
 }
 
 sub generate_nodelist {
-    my ( $self, $win_xp ) = @_;
+    my ( $self ) = @_;
     my @z = map { scalar grep $_, @$_[ 1 .. 20 ] } @$self;
     my @empty = grep !$self->[$_][1], 0 .. 7;
     my @free  = grep !$self->[$_][0], 0 .. 3;
@@ -256,7 +273,7 @@ sub generate_nodelist {
                     if (   @empty > 0
                         && $k > 1
                         && $flag == 1
-                        && ( $win_xp ? min( 1, scalar @empty ) : @empty ) *
+                        && ( $conf{winxp_bool} ? min( 1, scalar @empty ) : @empty ) *
                         ( @free + 1 ) >= ( @_ = $k .. $z[$c] ) )
                     {    # e*(f+1)
                         my $x = 0;
@@ -267,7 +284,7 @@ sub generate_nodelist {
                     if (   rank($srx) + 1 == rank($dst)
                         && opposite_colors( $srx, $dst )
                         && (
-                            ( $win_xp ? min( 1, scalar @empty ) : @empty ) + 1 )
+                            ( $conf{winxp_bool} ? min( 1, scalar @empty ) : @empty ) + 1 )
                         * ( @free + 1 ) >= ( @_ = $k .. $z[$c] ) )
                     {                            # (e+1)*(f+1)
                         my $x = $z[$j];
@@ -357,7 +374,6 @@ sub notation {
 
     # if a super move, is it valid for XP ?
 
-    my $warn = 0;
     if (
         $super_cnt
         && !(
@@ -366,12 +382,12 @@ sub notation {
         )
       )
     {
-        $warn = 1;
+        $conf{winxp_warn} = 1;
     }
 
     # output notation
 
-    $warn, $std_src . $std_dst,    # standard notation
+      $std_src . $std_dst,    # standard notation
       $dsc_src[0] . ( @dsc_src == 1 ? "" : "-" . $dsc_src[-1] ),
       $dsc_dst,                    # descriptive notation
       join ", ", map {

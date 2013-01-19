@@ -1,6 +1,6 @@
 package Freecell::App;
 use version;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use warnings;
 use strict;
 use Freecell::Tableau;
@@ -12,23 +12,20 @@ use List::Util qw(min);
 my $QUIT_NOW = 0;
 $SIG{'INT'} = sub { $QUIT_NOW = 1 };
 
-my $cnt;    # new positions
-my $dup;    # potential dupes
+my $cnt;              # new positions
+my $dup;              # potential dupes
 my $tot       = 0;
 my $found     = 0;
-my $depth     = 0;  # maxnodes estimates - sometimes better solution when higher
-my $max_depth = 55; # 2000   < 2GB,  5-10 mins to solve, perl x86 (32bit) ok
+my $depth     = 0;    # maxnodes estimates - sometimes better solution when higher
+my $max_depth = 55;   # 2000   < 2GB,  5-10 mins to solve, perl x86 (32bit) ok
 my $max_nodes = 2000; # 25000  ~ 2GB, 20-40 mins to solve, perl x64 (64bit) only
-my $win_xp    = 0;    # 100000 > 4GB, over 2 hrs to solve
-my $game_no   = 0;    # 250000 > 16GB, out_of_memory!
-my $log_stats = 0;
+my $game_no   = 0;    # 100000 > 4GB, over 2 hrs to solve
+my $log_stats = 0;    # 250000 > 16GB, out_of_memory!
 my $showall   = 0;
-my $fcgsfile;
+my $fcgsfile  = '';
 my %stats;
 my @solution;
 my $position;         # seen layouts
-my $warn;
-my $msg = ". . .Game solution not valid for XP!";
 my $logger;
 
 sub getopts {
@@ -36,15 +33,13 @@ sub getopts {
     my $result = GetOptions(
         "gameno:i"   => \$game_no,      #numeric
         "maxnodes:i" => \$max_nodes,    #numeric
-        "winxp!"     => \$win_xp,       #boolean
+        "winxp!"     => sub { Freecell::Tableau->winxp_bool($_[1]) },
         "showall!"   => \$showall,      #boolean
         "maxdepth:i" => \$max_depth,    #numeric
         "logstats!"  => \$log_stats,    #boolean
         "analyze:s"  => \$fcgsfile,     #string
     );
-    print ">$fcgsfile";
-    usage_quit(0)
-      if !( $result and $game_no >= 1 and $game_no <= 1_000_000 or $fcgsfile );
+    usage_quit(0) if !( $result and $game_no >= 1 and $game_no <= 1_000_000 or $fcgsfile );
 
     sub usage_quit {
 
@@ -52,7 +47,7 @@ sub getopts {
         print <<"END_OF_MESSAGE"; exit;
 
 Usage:
-$0  [switches]
+freecell-solver  [switches]
 This will solve a selected game of Freecell.
   
 Switches:
@@ -98,10 +93,10 @@ sub stats {
 }
 
 sub out {
-    my ( $game_no, $max_nodes, $win_xp, @solution ) = @_;
+    my ( $game_no, $max_nodes, @solution ) = @_;
     my $depth = @solution;
     my $file = sprintf "#%s %s %sk %s", $game_no, $depth, $max_nodes / 1000,
-      ( $win_xp ? "xp" : $warn ? "w7" : "all" );
+      ( Freecell::Tableau->winxp_bool() ? "xp" : Freecell::Tableau->winxp_warn() ? "w7" : "all" );
     my $log = "\n\n";
     my $std = "\n\n#$game_no\n";
     my $cnt = 0;
@@ -120,7 +115,7 @@ caption {background: #f4f4f4;  font-weight: bold;}
 eof
     $htm .=
         "<table><caption>Game #$game_no (Windows "
-      . ( $win_xp || !$warn ? "XP, " : "" )
+      . ( Freecell::Tableau->winxp_bool() || !Freecell::Tableau->winxp_warn() ? "XP, " : "" )
       . "Vista, 7)</caption>\n";
     $htm .= "<tr><th>No<th>SN<th>Move<th>To<th>Autoplay to home\n";
 
@@ -178,7 +173,6 @@ sub analyze
 sub backtrack {
     my $key = shift;
     my $tableau;
-    $warn = 0;
     while (1) {
         my ( $depth, $token, $move ) = @{ $position->{$key} };
         last unless $depth;
@@ -186,8 +180,7 @@ sub backtrack {
         $tableau->undo($move);
         ( $key, $token ) = $tableau->to_token();
         my @score = @{ $position->{$key}[3] };
-        my ( $rc, @node ) = $tableau->notation($move);
-        $warn ||= $rc;
+        my @node = $tableau->notation($move);
         push @solution,
           join( "\t", $tableau->to_string, @score, $depth, @node );
     }
@@ -195,7 +188,7 @@ sub backtrack {
 
 sub search {
     my $tableau  = shift;
-    my $nodelist = $tableau->generate_nodelist($win_xp);
+    my $nodelist = $tableau->generate_nodelist();
     if ( @$nodelist > 0 ) {
         foreach my $node (@$nodelist) {
             foreach my $move (@$node) {
@@ -212,7 +205,7 @@ sub search {
                   @$tableau;
                 if ( "000013131313" eq $state ) {
                     backtrack($key);
-                    out( $game_no, $max_nodes, $win_xp, reverse @solution );
+                    out( $game_no, $max_nodes, reverse @solution );
                     $found = 1;
                 }
             }
@@ -256,7 +249,7 @@ eof
 
     $logger->info();
     $logger->info( ". . .Starting --gameno $game_no --maxnodes $max_nodes ",
-        $win_xp ? "--winxp" : "--nowinxp" );
+        Freecell::Tableau->winxp_bool() ? "--winxp" : "--nowinxp" );
     $logger->info();
 
     while ( $depth < $max_depth && !$found ) {
@@ -336,7 +329,8 @@ sub run {
     else {
         solve();
     }
-    $logger->info( sprintf "%-41s tot=%9d", $warn ? $msg : "", $tot );
+    $logger->info( sprintf "%-41s tot=%9d", 
+        Freecell::Tableau->winxp_warn() ? ". . .Game solution not valid for XP!" : "", $tot );
 }
 run() unless caller;
 
@@ -397,7 +391,7 @@ hash are C<[ depth, token, node, score, 0> (place holder for level used later du
 If one of the new positons solve the hand, then call C<backtrack()> to build the
 solution array and then call C<out()> to write the html. Set found to true.
 
-=head2 generate_nodelist($win_xp)
+=head2 generate_nodelist()
 
 Creates a node for all valid plays of a given Tableau.
 
