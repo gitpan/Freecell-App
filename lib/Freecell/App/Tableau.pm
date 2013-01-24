@@ -1,14 +1,14 @@
-package Freecell::Tableau;
+package Freecell::App::Tableau;
 use version;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 use warnings;
 use strict;
 use Storable qw(dclone);
 use List::Util qw(min);
 
 my %conf = (
-    winxp_bool => 0,
-    winxp_warn => 0,
+    winxp_opt => 0,  # 1 is solve for XP
+    winxp_warn => 0, # 1 is invalid for XP
 );
 sub _property {
     my ($class, $attr, $value) = @_;
@@ -19,7 +19,7 @@ sub _property {
     }
     return $conf{$attr};
 }
-sub winxp_bool () { return shift->_property('winxp_bool', @_) }
+sub winxp_opt ()  { return shift->_property('winxp_opt', @_) }
 sub winxp_warn () { return shift->_property('winxp_warn', @_) }
 
 sub rank            { $_[0] & 15 }
@@ -50,8 +50,8 @@ sub from_string {
         }
         $r++;
     }
-
     # fix home if out of order
+
     my %home = map {
         my $card = $self->[$_][0];
         suit($card) + 4, $card;
@@ -273,7 +273,7 @@ sub generate_nodelist {
                     if (   @empty > 0
                         && $k > 1
                         && $flag == 1
-                        && ( $conf{winxp_bool} ? min( 1, scalar @empty ) : @empty ) *
+                        && ( $conf{winxp_opt} ? min( 1, scalar @empty ) : @empty ) *
                         ( @free + 1 ) >= ( @_ = $k .. $z[$c] ) )
                     {    # e*(f+1)
                         my $x = 0;
@@ -284,7 +284,7 @@ sub generate_nodelist {
                     if (   rank($srx) + 1 == rank($dst)
                         && opposite_colors( $srx, $dst )
                         && (
-                            ( $conf{winxp_bool} ? min( 1, scalar @empty ) : @empty ) + 1 )
+                            ( $conf{winxp_opt} ? min( 1, scalar @empty ) : @empty ) + 1 )
                         * ( @free + 1 ) >= ( @_ = $k .. $z[$c] ) )
                     {                            # (e+1)*(f+1)
                         my $x = $z[$j];
@@ -425,7 +425,7 @@ __END__
 
 =head1 NAME
 
-Freecell::Tableau
+Freecell::Tableau - Freecell layout.
 
 =head1 VERSION
 
@@ -496,7 +496,7 @@ and populate the Tableau.
 
 Creates a human readable string from Tableau.
 
-=head2 deal($gameno)
+=head2 from_deal($gameno)
 
 Thanks to L<http://rosettacode.org/wiki/Deal_cards_for_FreeCell#Perl> 
 this generates hands 1 to 1 million with a perl one-liner.
@@ -519,6 +519,53 @@ Append to the node all safe moves to home.
 =head2 notation($node)
 
 During backtrack, the notation is pushed onto the solution array.
+
+=head2 generate_nodelist()
+
+Creates a node for all valid plays of a given Tableau.
+
+=head2 heuristic
+
+The algorithm is simple.
+
+=over 4
+
+=item * Start with 64.
+
+=item * Subtract the rank of all the top home cards.
+
+=item * Subtract 1 for each empty freecell and empty column.
+
+=item * Add 1 for each sequence break in the cascade
+        e.g. 6C 5H 4S 2C KD QS TH has 3 sequence breaks,
+        one major at 2C because the KD is greater than
+        the 2C.
+
+=back
+
+=head2 helper subroutines
+
+=over 4
+
+=item * opposite_colors() - test if two cards are of opposite color
+
+=item * rank() - return the rank of a card
+
+=item * suit() - return the suit of a card
+
+=item * to_card() - convert a numeric tableau card to a two character string
+
+=back
+
+=head2 getters and setters for two class variables
+
+=over 4
+
+=item * winxp_opt() - was the --win_xp option specified
+
+=item * winxp_warn() - if not, is solution valid for XP
+
+=back
 
 =head1 AUTHOR
 

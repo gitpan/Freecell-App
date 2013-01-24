@@ -38,11 +38,11 @@
    "provides" : {
       "Freecell::App" : {
          "file" : "lib/Freecell/App.pm",
-         "version" : "0.02"
+         "version" : "0.03"
       },
-      "Freecell::Tableau" : {
-         "file" : "lib/Freecell/Tableau.pm",
-         "version" : "0.02"
+      "Freecell::App::Tableau" : {
+         "file" : "lib/Freecell/App/Tableau.pm",
+         "version" : "0.03"
       }
    },
    "release_status" : "stable",
@@ -51,5 +51,5 @@
          "http://opensource.org/licenses/artistic-license-2.0.php"
       ]
    },
-   "version" : "0.02"
+   "version" : "0.03"
 }

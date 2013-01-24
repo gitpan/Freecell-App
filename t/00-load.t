@@ -8,7 +8,7 @@ plan tests => 2;
 
 BEGIN {
     use_ok( 'Freecell::App' ) || print "Bail out!\n";
-    use_ok( 'Freecell::Tableau' ) || print "Bail out!\n";
+    use_ok( 'Freecell::App::Tableau' ) || print "Bail out!\n";
 }
 
 diag( "Testing Freecell::App $Freecell::App::VERSION, Perl $], $^X" );

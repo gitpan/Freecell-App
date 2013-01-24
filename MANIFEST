@@ -1,7 +1,7 @@
 Build.PL
 Changes
 lib/Freecell/App.pm
-lib/Freecell/Tableau.pm
+lib/Freecell/App/Tableau.pm
 images/Freecell/c.png
 images/Freecell/d.png
 images/Freecell/h.png
